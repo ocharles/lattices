@@ -23,6 +23,7 @@ source-repository head
 library
   exposed-modules:  Algebra.Enumerable,
                     Algebra.Lattice,
+                    Algebra.Lattice.Divisible,
                     Algebra.Lattice.Dropped,
                     Algebra.Lattice.Levitated,
                     Algebra.Lattice.Lexicographic,
@@ -57,6 +58,7 @@ test-suite test
   build-depends:       base              >= 4.5  && < 4.10,
                        tasty             >= 0.10 && < 0.12,
                        tasty-quickcheck  >= 0.8  && < 0.9,
+                       nats >=1,
                        lattices,
                        transformers,
                        QuickCheck

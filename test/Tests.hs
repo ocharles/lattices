@@ -17,9 +17,13 @@ import Data.Monoid
 import Data.Traversable
 import Control.Monad (ap)
 import Test.QuickCheck.Function
+import Numeric.Natural (Natural)
 import Test.Tasty
 import Test.Tasty.QuickCheck as QC
 
+import Algebra.PartialOrd
+
+import qualified Algebra.Lattice.Divisible as Div
 import qualified Algebra.Lattice.Dropped as D
 import qualified Algebra.Lattice.Levitated as L
 import qualified Algebra.Lattice.Lexicographic as LO
@@ -28,16 +32,17 @@ import qualified Algebra.Lattice.Op as Op
 import qualified Algebra.Lattice.Ordered as O
 
 -- For old GHC to work
+data P (a :: *) = P
 data Proxy1 (a :: * -> *) = Proxy1
 
 main :: IO ()
 main = defaultMain tests
 
 tests :: TestTree
-tests = testGroup "Tests" [theseProps]
+tests = testGroup "Tests" [latticesProps]
 
-theseProps :: TestTree
-theseProps = testGroup "These"
+latticesProps :: TestTree
+latticesProps = testGroup "lattices"
   [ functorLaws "Dropped" (Proxy1 :: Proxy1 D.Dropped)
   , functorLaws "Levitated" (Proxy1 :: Proxy1 L.Levitated)
   , functorLaws "Lexicographic" (Proxy1 :: Proxy1 (LO.Lexicographic Bool))
@@ -56,6 +61,8 @@ theseProps = testGroup "These"
   , traversableLaws "Lifted" (Proxy1 :: Proxy1 U.Lifted)
   , traversableLaws "Op" (Proxy1 :: Proxy1 Op.Op)
   , traversableLaws "Ordered" (Proxy1 :: Proxy1 O.Ordered)
+  --
+  , partialOrdLaws "Divisible Integer" (P :: P (Div.Divisible Natural))
   ]
 
 functorLaws :: forall (f :: * -> *). ( Functor f
@@ -138,6 +145,31 @@ monadLaws name _ = testGroup ("Monad laws: " <> name)
     apProp f x = (f' <*> x) === ap f' x
        where f' = apply <$> f
 
+partialOrdLaws
+    :: forall a. (PartialOrd a, Arbitrary a, Show a, Eq a)
+    => String
+    -> P a
+    -> TestTree
+partialOrdLaws name _ = testGroup ("PartialOrd laws: " <> name)
+    [ QC.testProperty "reflexive" reflexive
+    -- , QC.testProperty "antisymmetric" antisymmetric
+    -- , QC.testProperty "transitive" transitive
+    , QC.testProperty "Eq compatible" eqCompatible
+    ]
+  where
+    reflexive :: a -> Bool
+    reflexive a = a `leq` a
+
+    {-
+    antisymmetric :: a -> a -> Property
+    antisymmetric a b = a `leq` b && b `leq` a ==> a == b
+
+    transitive :: a -> a -> a -> Property
+    transitive a b c = a `leq` b && b `leq` c ==> a `leq` c
+    -}
+
+    eqCompatible :: a -> a -> Property
+    eqCompatible a b = (a == b) === (partialOrdEq a b)
 
 -- Orphan instances
 
@@ -165,3 +197,9 @@ instance Arbitrary a => Arbitrary (Op.Op a) where
 
 instance (Arbitrary k, Arbitrary v) => Arbitrary (LO.Lexicographic k v) where
   arbitrary = LO.Lexicographic <$> arbitrary <*> arbitrary
+
+instance Arbitrary a => Arbitrary (Div.Divisible a) where
+  arbitrary = Div.Divisible <$> arbitrary
+
+instance Arbitrary Natural where
+    arbitrary = fromInteger . abs <$> arbitrary
